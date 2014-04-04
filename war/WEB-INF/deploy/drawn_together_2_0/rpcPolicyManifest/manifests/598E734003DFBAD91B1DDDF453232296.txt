@@ -1,0 +1,2 @@
+serviceClass: com.doodleproject.dt.client.GreetingService
+path: CC5676497C66F2CAB645A65F53951A18.gwt.rpc
