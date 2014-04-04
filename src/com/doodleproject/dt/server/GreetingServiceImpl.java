@@ -1,7 +1,13 @@
 package com.doodleproject.dt.server;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import com.doodleproject.dt.client.GreetingService;
-import com.doodleproject.dt.shared.FieldVerifier;
+import com.doodleproject.dt.shared.User;
 import com.google.gwt.user.server.rpc.RemoteServiceServlet;
 
 /**
@@ -9,40 +15,85 @@ import com.google.gwt.user.server.rpc.RemoteServiceServlet;
  */
 @SuppressWarnings("serial")
 public class GreetingServiceImpl extends RemoteServiceServlet implements
-		GreetingService {
+GreetingService {
+	static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
+	static final String DB_URL = "jdbc:mysql://localhost/doodle";
+	//  Database credentials
+	static final String USER = "root";
+	static final String PASS = "";
+	static final String TABLENAME = "users";
+	static final String TABLENAME2 = "events";
+	static final String TABLENAME3 = "sondaggio";
+	static final String TABLENAME4 = "commenti";
 
-	public String greetServer(String input) throws IllegalArgumentException {
-		// Verify that the input is valid. 
-		if (!FieldVerifier.isValidName(input)) {
-			// If the input is not valid, throw an IllegalArgumentException back to
-			// the client.
-			throw new IllegalArgumentException(
-					"Name must be at least 4 characters long");
+
+	@Override
+	public boolean registration(User user) throws IllegalArgumentException {
+		Connection conn = null;
+		PreparedStatement  statement = null;
+		String createTable = "CREATE TABLE IF NOT EXISTS "+TABLENAME + " (name VARCHAR(255), username VARCHAR(255), password VARCHAR(255), mail VARCHAR(255))"; 
+		try {
+			//COME SCRIVERE import com.mysql.jdbc.Driver caricata in modo dinamico
+			Class.forName("com.mysql.jdbc.Driver");
+			conn =  DriverManager.getConnection(DB_URL, USER, PASS);
+			//CONTROLLO INJECTION E SE LA TABELLA ESISTE
+			statement = conn.prepareStatement(createTable);
+			statement.executeUpdate();
+			//CONTROLLO SE username ESISTE 
+			if(usernameExist(conn, user.getUsername())){
+				System.out.println("username gia' esistente");
+				return false;
+			}
+			//INSERIMENTO NUOVO USER
+			else{
+				String insertTableSQL = "INSERT INTO "+TABLENAME+
+						"(name, username, password, mail) VALUES(?,?,?,?)";
+				statement = conn.prepareStatement(insertTableSQL);
+				statement.setString(1, user.getName());
+				statement.setString(2,user.getUsername());
+				statement.setString(3, user.getPassword());
+				statement.setString(4, user.getMail());
+				statement.executeUpdate();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
 		}
 
-		String serverInfo = getServletContext().getServerInfo();
-		String userAgent = getThreadLocalRequest().getHeader("User-Agent");
-
-		// Escape data from the client to avoid cross-site script vulnerabilities.
-		input = escapeHtml(input);
-		userAgent = escapeHtml(userAgent);
-
-		return "Hello, " + input + "!<br><br>I am running " + serverInfo
-				+ ".<br><br>It looks like you are using:<br>" + userAgent;
+		return true;
 	}
 
-	/**
-	 * Escape an html string. Escaping data received from the client helps to
-	 * prevent cross-site script vulnerabilities.
-	 * 
-	 * @param html the html string to escape
-	 * @return the escaped string
-	 */
-	private String escapeHtml(String html) {
-		if (html == null) {
-			return null;
+	public boolean usernameExist(Connection conn,String nickname) throws SQLException{
+		PreparedStatement  statement = null;
+		String username = "empty";
+		String selectSQL = "SELECT name FROM "+TABLENAME+" WHERE username=? ";
+		statement = conn.prepareStatement(selectSQL);
+		statement.setString(1, nickname);
+		ResultSet rs = statement.executeQuery();
+		while (rs.next()) {
+			username = rs.getString(1);
 		}
-		return html.replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-				.replaceAll(">", "&gt;");
+		if(username.contentEquals("empty"))
+			return false;
+		else return true;
+
+	}
+
+	@Override
+	public boolean login(User user) throws Exception {
+		Class.forName("com.mysql.jdbc.Driver");
+		Connection conn = null;
+		PreparedStatement  statement = null;
+		conn =  DriverManager.getConnection(DB_URL, USER, PASS);
+		String password = "empty";
+		String selectSQL = "SELECT username,password FROM "+TABLENAME+" WHERE username=? ";
+		statement = conn.prepareStatement(selectSQL);
+		statement.setString(1, user.getUsername());
+		ResultSet rs = statement.executeQuery();
+		while (rs.next()) {
+			password = rs.getString(2);
+		}
+		return (password.contentEquals(user.getPassword()) ? true:false);
+
 	}
 }

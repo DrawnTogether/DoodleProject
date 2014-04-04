@@ -1,5 +1,6 @@
 package com.doodleproject.dt.client;
 
+import com.doodleproject.dt.shared.User;
 import com.google.gwt.user.client.rpc.RemoteService;
 import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
 
@@ -8,5 +9,6 @@ import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
  */
 @RemoteServiceRelativePath("greet")
 public interface GreetingService extends RemoteService {
-	String greetServer(String name) throws IllegalArgumentException;
+	boolean registration(User user) throws IllegalArgumentException;
+	boolean login(User user) throws Exception;
 }
